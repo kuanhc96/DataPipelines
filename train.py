@@ -26,7 +26,8 @@ args = vars(ap.parse_args())
 INIT_LR = 1e-1
 BS = 8
 EPOCHS = 50
-num_classes = len( os.listdir(args["dataset"]) )
+class_labels = os.listdir(args["dataset"])
+num_classes = len( class_labels )
 
 print("[INFO] loading dataset")
 if args["augment"]:
@@ -76,6 +77,7 @@ if args["augment"]:
     )
     print("[INFO] evaluating network")
     predictions = model.predict(x=test_iterator)
+    print(classification_report(test_iterator.labels, predictions.argmax(axis=1), target_names=class_labels))
 
 else:
     preprocessors = [SimplePreprocessor(64, 64)]
