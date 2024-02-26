@@ -25,7 +25,7 @@ args = vars(ap.parse_args())
 
 INIT_LR = 1e-1
 BS = 8
-EPOCHS = 1
+EPOCHS = 50
 class_labels = os.listdir(args["dataset"])
 num_classes = len( class_labels )
 
@@ -62,7 +62,6 @@ if args["augment"]:
         target_size=(64, 64),
         batch_size=BS
     )
-    print(test_iterator.labels)
 
     print("[INFO] compiling model")
     sgd = SGD(learning_rate=INIT_LR, momentum=0.9, weight_decay=INIT_LR/EPOCHS)
@@ -75,6 +74,7 @@ if args["augment"]:
         validation_data=test_iterator,
         epochs=EPOCHS
     )
+    model.save(os.path.join(args["plot"], f"augmented_weights_epochs_{EPOCHS}.hdf5"))
     print("[INFO] evaluating network")
     predictions = model.predict(x=test_iterator)
     print(classification_report(test_iterator.labels, predictions.argmax(axis=1), target_names=class_labels))
@@ -107,6 +107,7 @@ else:
         batch_size=BS,
         epochs=EPOCHS
     )
+    model.save(os.path.join(args["plot"], f"non_augmented_weights_epochs_{EPOCHS}.hdf5"))
 
     print("[INFO] evaluating network")
     predictions = model.predict(x=testX.astype("float32"), batch_size=BS)
@@ -123,5 +124,8 @@ plt.title("training loss and accuracy on dataset")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="lower left")
-plt.savefig(args["plot"])
+if args["augment"]:
+    plt.savefig(os.path.join(args["plot"], f"augmented_training_history.png"))
+else:
+    plt.savefig(os.path.join(args["plot"], f"non_augmented_training_history.png"))
 
