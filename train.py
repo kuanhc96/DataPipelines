@@ -25,7 +25,7 @@ args = vars(ap.parse_args())
 
 INIT_LR = 1e-1
 BS = 8
-EPOCHS = 50
+EPOCHS = 1
 class_labels = os.listdir(args["dataset"])
 num_classes = len( class_labels )
 
@@ -115,10 +115,10 @@ else:
 epoch_linspace = np.arange(0, EPOCHS)
 plt.style.use("ggplot")
 plt.figure()
-plt.plot(epoch_linspace, training_history["loss"], label="train_loss")
-plt.plot(epoch_linspace, training_history["val_loss"], label="val_loss")
-plt.plot(epoch_linspace, training_history["accuracy"], label="train_acc")
-plt.plot(epoch_linspace, training_history["val_accuracy"], label="val_acc")
+plt.plot(epoch_linspace, training_history.history["loss"], label="train_loss")
+plt.plot(epoch_linspace, training_history.history["val_loss"], label="val_loss")
+plt.plot(epoch_linspace, training_history.history["accuracy"], label="train_acc")
+plt.plot(epoch_linspace, training_history.history["val_accuracy"], label="val_acc")
 plt.title("training loss and accuracy on dataset")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
