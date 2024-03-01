@@ -14,8 +14,8 @@ trainPaths = imagePaths[:i] # trainPaths = dataset/orig/**/*.png
 testPaths = imagePaths[i:]
 
 i = int(len(trainPaths) * config.VAL_SPLIT)
-trainPaths = imagePaths[:i]
-valPaths = trainPaths[i:]
+valPaths = trainPaths[:i]
+trainPaths = imagePaths[i:]
 
 # config.TRAIN_PATH, config.VALIDATION_PATH, config.TEST_PATH
 # are the paths that will be created
