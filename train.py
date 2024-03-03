@@ -10,13 +10,15 @@ from sklearn.metrics import classification_report
 import tensorflow as tf
 from tensorflow.data import AUTOTUNE
 from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical # for one hot encoding
+from tensorflow.keras.layers.experimental import preprocessing
 from imutils import paths
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 import cv2
 import os
+import random
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--dataset", required=True, help="path to input dataset")
@@ -29,19 +31,60 @@ BS = 32
 EPOCHS = 50
 class_labels = os.listdir(args["dataset"])
 num_classes = len( class_labels )
+print("NUM CLASSES:", num_classes)
 
-def load_images(imagePath):
+def load_images(imagePath, label):
     image = tf.io.read_file(imagePath)
-    image = tf.image.decode_png(image, channels=3)
+    image = tf.image.decode_jpeg(image, channels=3)
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     image = tf.image.resize(image, (64, 64))
 
-    label = tf.strings.split(imagePath, os.path.sep)[-2]
+    # label = tf.strings.split(imagePath, os.path.sep)[-2]
 
     return (image, label)
 
-@tf.function
-def augment(image, label):
+def augment(image, label, aug):
+    image = aug(image)
+
+    return (image, label)
+
+print("[INFO] loading dataset")
+if args["augment"]:
+    print("[INFO] performing data augmentation on the fly")
+    allImages = list(paths.list_images(args["dataset"]))
+    random.shuffle(allImages)
+    i = int(len(allImages) * 0.25)
+    trainPaths = allImages[i:]
+    trainLabels = [p.split(os.path.sep)[-2] for p in trainPaths]
+    print("TRAIN LABELS", trainLabels)
+
+    testPaths = allImages[:i]
+    testLabels = [p.split(os.path.sep)[-2] for p in testPaths]
+
+    labelEncoder = LabelEncoder()
+    trainLabels = labelEncoder.fit_transform(trainLabels)
+    # trainLabels = trainLabels.reshape(len(trainLabels), 1)
+    trainLabels = to_categorical(trainLabels)
+
+    testLabels = labelEncoder.fit_transform(testLabels)
+    testLabels = to_categorical(testLabels)
+
+    classTotals = trainLabels.sum(axis=0)
+    classWeights = {}
+
+    for i in range(0, len(classTotals)):
+        classWeights[i] = classTotals.max() / classTotals[i]
+
+
+    trainDS = tf.data.Dataset.from_tensor_slices((trainPaths, trainLabels))
+    trainDS = (
+        trainDS
+        .shuffle(len(trainPaths), seed=42)
+        .map(load_images, num_parallel_calls=AUTOTUNE)
+        .batch(BS)
+        .cache()
+    )
+
     #     rotation_range=20,
     #     zoom_range=0.15,
     #     width_shift_range=0.2,
@@ -50,52 +93,46 @@ def augment(image, label):
     #     horizontal_flip=True,
     #     fill_mode="nearest",
     #     validation_split=0.25
-    image = tf.image.random_flip_up_down(image)
-    image = tf.image.random_flip_left_right(image)
 
-    return (image, label)
+    # default shear method does not exist in "layers.preprocessing"
+    trainAug = tf.keras.Sequential(
+        [
+            preprocessing.Rescaling(scale=1.0/255),
+            preprocessing.RandomRotation(20.0/360),
+            preprocessing.RandomZoom(height_factor=(0, 0.15), fill_mode="nearest"),
+            preprocessing.RandomTranslation(height_factor=0.2, width_factor=0.2),
+            preprocessing.RandomFlip(mode="horizontal")
 
-print("[INFO] loading dataset")
-if args["augment"]:
-    print("[INFO] performing data augmentation on the fly")
-    allImages = list(paths.list_images(args["dataset"]))
-    i = int(len(allImages) * 0.25)
-    trainPaths = allImages[i:]
-    testPaths = allImages[:i]
-
-    trainLabels = [p.split(os.path.sep)[-2] for p in trainPaths]
-    print(trainLabels)
-
-    labelEncoder = LabelEncoder()
-    trainLabels = labelEncoder.fit_transform(trainLabels)
-    trainLabels = to_categorical(trainLabels)
-    classTotals = trainLabels.sum(axis=0)
-    classWeights = {}
-
-    for i in range(0, len(classTotals)):
-        classWeights[i] = classTotals.max() / classTotals[i]
-
-    trainDS = tf.data.Dataset.from_tensor_slices(trainPaths)
+        ]
+    )
+    
     trainDS = (
         trainDS
-        .shuffle(len(trainPaths))
-        .map(load_images, num_parallel_calls=AUTOTUNE)
-        .map(augment, num_parallel_calls=AUTOTUNE)
-        .cache()
-        .batch(BS)
+        .map(lambda x, y: augment(x, y, trainAug), num_parallel_calls=AUTOTUNE)
         .prefetch(AUTOTUNE)
-
     )
 
-    testDS = tf.data.Dataset.from_tensor_slices(testPaths)
+    testDS = tf.data.Dataset.from_tensor_slices(( testPaths, testLabels ))
     testDS = (
         testDS
-        .shuffle(len(trainPaths))
+        .shuffle(len(testPaths))
         .map(load_images, num_parallel_calls=AUTOTUNE)
-        .cache()
         .batch(BS)
+        .cache()
+    )
+
+    testAug = tf.keras.Sequential(
+        [
+            preprocessing.Rescaling(scale=1.0/255),
+        ]
+    )
+
+    testDS = (
+        testDS
+        .map(lambda x, y: augment(x, y, testAug), num_parallel_calls=AUTOTUNE)
         .prefetch(AUTOTUNE)
     )
+
     # aug = ImageDataGenerator(
     #     rotation_range=20,
     #     zoom_range=0.15,
