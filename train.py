@@ -39,8 +39,6 @@ def load_images(imagePath, label):
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     image = tf.image.resize(image, (64, 64))
 
-    # label = tf.strings.split(imagePath, os.path.sep)[-2]
-
     return (image, label)
 
 def augment(image, label, aug):
@@ -56,14 +54,12 @@ if args["augment"]:
     i = int(len(allImages) * 0.25)
     trainPaths = allImages[i:]
     trainLabels = [p.split(os.path.sep)[-2] for p in trainPaths]
-    print("TRAIN LABELS", trainLabels)
 
     testPaths = allImages[:i]
     testLabels = [p.split(os.path.sep)[-2] for p in testPaths]
 
     labelEncoder = LabelEncoder()
     trainLabels = labelEncoder.fit_transform(trainLabels)
-    # trainLabels = trainLabels.reshape(len(trainLabels), 1)
     trainLabels = to_categorical(trainLabels)
 
     testLabels = labelEncoder.fit_transform(testLabels)
@@ -132,37 +128,6 @@ if args["augment"]:
         .map(lambda x, y: augment(x, y, testAug), num_parallel_calls=AUTOTUNE)
         .prefetch(AUTOTUNE)
     )
-
-    # aug = ImageDataGenerator(
-    #     rotation_range=20,
-    #     zoom_range=0.15,
-    #     width_shift_range=0.2,
-    #     height_shift_range=0.2,
-    #     shear_range=0.15,
-    #     horizontal_flip=True,
-    #     fill_mode="nearest",
-    #     validation_split=0.25
-    # )
-    # train_iterator = aug.flow_from_directory(
-    #     directory=args["dataset"],
-    #     seed=42,
-    #     shuffle=True,
-    #     subset="training",
-    #     class_mode="categorical",
-    #     color_mode="rgb",
-    #     target_size=(64, 64),
-    #     batch_size=BS
-    # )
-    # test_iterator = aug.flow_from_directory(
-    #     directory=args["dataset"],
-    #     seed=42,
-    #     shuffle=True,
-    #     subset="validation",
-    #     class_mode="categorical",
-    #     color_mode="rgb",
-    #     target_size=(64, 64),
-    #     batch_size=BS
-    # )
 
     print("[INFO] compiling model")
     sgd = SGD(learning_rate=INIT_LR, momentum=0.9, weight_decay=INIT_LR/EPOCHS)
