@@ -59,10 +59,11 @@ if args["augment"]:
     testLabels = [p.split(os.path.sep)[-2] for p in testPaths]
 
     labelEncoder = LabelEncoder()
-    trainLabels = labelEncoder.fit_transform(trainLabels)
+    labelEncoder = labelEncoder.fit(trainLabels)
+    trainLabels = labelEncoder.transform(trainLabels)
     trainLabels = to_categorical(trainLabels)
 
-    testLabels = labelEncoder.fit_transform(testLabels)
+    testLabels = labelEncoder.transform(testLabels)
     testLabels = to_categorical(testLabels)
 
     classTotals = trainLabels.sum(axis=0)
