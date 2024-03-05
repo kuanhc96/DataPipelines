@@ -1,3 +1,5 @@
+# python train.py --augment --dataset datasets/fruits/
+# python train.py --dataset datasets/fruits/
 import matplotlib
 matplotlib.use("Agg")
 
@@ -31,11 +33,11 @@ BS = 32
 EPOCHS = 50
 class_labels = os.listdir(args["dataset"])
 num_classes = len( class_labels )
-print("NUM CLASSES:", num_classes)
 
 def load_images(imagePath, label):
     image = tf.io.read_file(imagePath)
     image = tf.image.decode_jpeg(image, channels=3)
+    # convert_image_dtype performs rescaling!!!
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     image = tf.image.resize(image, (64, 64))
 
@@ -66,11 +68,11 @@ if args["augment"]:
     testLabels = labelEncoder.transform(testLabels)
     testLabels = to_categorical(testLabels)
 
-    classTotals = trainLabels.sum(axis=0)
-    classWeights = {}
+    # classTotals = trainLabels.sum(axis=0)
+    # classWeights = {}
 
-    for i in range(0, len(classTotals)):
-        classWeights[i] = classTotals.max() / classTotals[i]
+    # for i in range(0, len(classTotals)):
+    #     classWeights[i] = classTotals.max() / classTotals[i]
 
 
     trainDS = tf.data.Dataset.from_tensor_slices((trainPaths, trainLabels))
@@ -82,19 +84,9 @@ if args["augment"]:
         .cache()
     )
 
-    #     rotation_range=20,
-    #     zoom_range=0.15,
-    #     width_shift_range=0.2,
-    #     height_shift_range=0.2,
-    #     shear_range=0.15,
-    #     horizontal_flip=True,
-    #     fill_mode="nearest",
-    #     validation_split=0.25
-
     # default shear method does not exist in "layers.preprocessing"
     trainAug = tf.keras.Sequential(
         [
-            preprocessing.Rescaling(scale=1.0/255),
             preprocessing.RandomRotation(20.0/360),
             preprocessing.RandomZoom(height_factor=(0, 0.15), fill_mode="nearest"),
             preprocessing.RandomTranslation(height_factor=0.2, width_factor=0.2),
@@ -120,7 +112,7 @@ if args["augment"]:
 
     testAug = tf.keras.Sequential(
         [
-            preprocessing.Rescaling(scale=1.0/255),
+            # preprocessing.Rescaling(scale=1.0/255),
         ]
     )
 
